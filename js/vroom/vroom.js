@@ -56,6 +56,13 @@ var Vroom = {
 			if(typeof options.inputPreventDefault !== 'undefined' && Array.isArray(options.inputPreventDefault)) {
 				Vroom.inputPreventDefault = options.inputPreventDefault;
 			}
+
+			// BckgroundColor
+			if(typeof options.backgroundColor !== 'undefined') {
+				Vroom.backgroundColor = options.backgroundColor;
+			} else {
+				Vroom.backgroundColor = '#000';
+			}
 		}
 
 		// Event listners
@@ -380,7 +387,8 @@ var Vroom = {
 	////////////////////////////// RENDER //////////////////////////////
 	render: function() {
 		// Clear canvas
-		Vroom.ctx.clearRect(0, 0, Vroom.canvas.width, Vroom.canvas.height);
+		Vroom.ctx.fillStyle = Vroom.backgroundColor;
+		Vroom.ctx.fillRect(0, 0, Vroom.dim.width, Vroom.dim.height);
 
 		// Get camera coordinates
 		var camera = {
