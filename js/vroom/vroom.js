@@ -226,6 +226,10 @@ var Vroom = {
 
 	isAreaClicked: function(pos, dim, relativeToCamera) {
 		if(Vroom.mouseState.clicking) {
+			if(typeof relativeToCamera === 'undefined') {
+				relativeToCamera = true;
+			}
+			
 			var areaPos = pos;
 			var areaDim = dim;
 
