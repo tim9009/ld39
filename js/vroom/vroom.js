@@ -5,6 +5,10 @@ var Vroom = {
 		Vroom.canvas = document.getElementById('vroom-canvas');
 		Vroom.ctx = Vroom.canvas.getContext('2d');
 
+		// Layers
+		Vroom.maxLayers = 6;
+		Vroom.layers = [];
+
 		// Scale content
 		Vroom.canvasSizeCache = {
 			width: Vroom.canvas.width,
@@ -39,7 +43,8 @@ var Vroom = {
 				x: 0,
 				y: 0,
 			},
-			clicking: false,
+			mouseDown: false,
+			clicked: false,
 		};
 
 		// Engine state
@@ -71,6 +76,7 @@ var Vroom = {
 		Vroom.canvas.addEventListener('mousemove', Vroom.handleMouseMove);
 		Vroom.canvas.addEventListener('mousedown', Vroom.handleMouseDown);
 		Vroom.canvas.addEventListener('mouseup', Vroom.handleMouseUp);
+		Vroom.canvas.addEventListener('click', Vroom.handleMouseClick);
 
 		// Check for canvas resize
 		window.setInterval(function() {
@@ -82,6 +88,8 @@ var Vroom = {
 				Vroom.setCanvasScale();
 			}
 		}, 250);
+
+		Vroom.mainUpdateLoopExtension = null;
 	},
 
 
@@ -173,6 +181,18 @@ var Vroom = {
 		return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
 	},
 
+	multilineText: function(text, x, y, margin) {
+		if(typeof margin === 'undefined') {
+			margin = 0;
+		}
+
+		textLines = text.split('\n');
+
+		for(var i = 0; i < textLines.length; i++) {
+			Vroom.ctx.fillText(textLines[i], x, y + (margin * i));
+		}
+	},
+
 
 
 
@@ -214,22 +234,31 @@ var Vroom = {
 		Vroom.mouseState.pos.y = (e.clientY - rect.top) / Vroom.scale.y;
 	},
 
+	handleMouseClick: function(e) {
+		if(!e) e = window.event;
+		Vroom.mouseState.clicked = true;
+	},
+
 	handleMouseDown: function(e) {
 		if(!e) e = window.event;
-		Vroom.mouseState.clicking = true;
+		Vroom.mouseState.mouseDown = true;
 	},
 
 	handleMouseUp: function(e) {
 		if(!e) e = window.event;
-		Vroom.mouseState.clicking = false;
+		Vroom.mouseState.mouseDown = false;
+	},
+
+	resetMouseState: function() {
+		Vroom.mouseState.clicked = false;
 	},
 
 	isAreaClicked: function(pos, dim, relativeToCamera) {
-		if(Vroom.mouseState.clicking) {
+		if(Vroom.mouseState.clicked) {
 			if(typeof relativeToCamera === 'undefined') {
 				relativeToCamera = true;
 			}
-			
+
 			var areaPos = pos;
 			var areaDim = dim;
 
@@ -284,6 +313,11 @@ var Vroom = {
 		// Run init function if defined
 		if(typeof entityObject.init !== 'undefined') {
 			entityObject.init();
+		}
+
+		// Check for layer declaration
+		if(typeof entityObject.layer === 'undefined' || entityObject.layer > Vroom.maxLayers) {
+			entityObject.layer = 1;
 		}
 
 		// Add entity object to entity list
@@ -369,18 +403,49 @@ var Vroom = {
 
 
 
+	////////////////////////////// UPDATE LAYERS //////////////////////////////
+	updateLayers: function() {
+		// Reset layers
+		Vroom.layers = [];
+
+		for(var entityID in Vroom.entityList) {
+			if(typeof Vroom.entityList[entityID].layer !== 'undefined') {
+				// Genereate layer if not already generated
+				if(typeof Vroom.layers[Vroom.entityList[entityID].layer] === 'undefined') {
+					Vroom.layers[Vroom.entityList[entityID].layer] = [];
+				}
+
+				// Push entity ID to layer
+				Vroom.layers[Vroom.entityList[entityID].layer].push(entityID);
+			}
+		}
+	},
+
+
+
+
+
 	////////////////////////////// UPDATE //////////////////////////////
 	update: function(step) {
+		var reversedLayers = Vroom.layers;
+		reversedLayers.reverse();
 		// Loop through registered entity update functions
-		for(var entity in Vroom.entityList) {
-			if(typeof Vroom.entityList[entity].update === 'function') {
-				Vroom.entityList[entity].update(step);
+		for(var layer in reversedLayers){
+			for(var entity in Vroom.layers[layer]) {
+				if(typeof Vroom.entityList[Vroom.layers[layer][entity]] !== 'undefined' && typeof Vroom.entityList[Vroom.layers[layer][entity]].update === 'function') {
+					Vroom.entityList[Vroom.layers[layer][entity]].update(step);
+				}
 			}
 		}
 
 		// Update active camera
 		if(Vroom.activeCamera !== null) {
 			Vroom.activeCamera.update(step);
+		}
+
+		// Run main update loop extension function
+		if(typeof Vroom.mainUpdateLoopExtension === 'function') {
+			Vroom.mainUpdateLoopExtension(step);
 		}
 	},
 
@@ -411,9 +476,11 @@ var Vroom = {
 		}
 
 		// Loop through registered entity render functions
-		for(var entity in Vroom.entityList) {
-			if(typeof Vroom.entityList[entity].render === 'function') {
-				Vroom.entityList[entity].render(camera);
+		for(var layer in Vroom.layers){
+			for(var entity in Vroom.layers[layer]) {
+				if(typeof Vroom.entityList[Vroom.layers[layer][entity]] !== 'undefined' && typeof Vroom.entityList[Vroom.layers[layer][entity]].render === 'function') {
+					Vroom.entityList[Vroom.layers[layer][entity]].render(camera);
+				}
 			}
 		}
 	},
@@ -457,6 +524,8 @@ var Vroom = {
 					Vroom.resetCollisionState();
 					Vroom.checkForCollisions();
 					Vroom.update(step);
+					Vroom.resetMouseState();
+					Vroom.updateLayers();
 				}
 
 				Vroom.render();
