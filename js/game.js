@@ -14,6 +14,7 @@ var TABLE = 'table';
 var DECK = 'deck';
 var DEVELOPMENT = 'development';
 var PUBLIC_WORK = 'public_work';
+var LARGE_PIXEL_SCALE = Vroom.dim.width / 240;
 
 
 // Gameplay variables
@@ -48,8 +49,8 @@ var table = Vroom.registerEntity({
 	drawLimit: 1,
 	cardMargin: 10,
 	pos: {
-		x: 500,
-		y: 150,
+		x: 600,
+		y: 100,
 	},
 
 	update: function(step) {
@@ -133,7 +134,7 @@ function Card(text, type, effects, effectValue, unrestValue) {
 
 			if(Vroom.isAreaClicked(this.pos, scaledDim)) {
 				if(this.location === TABLE) {
-					console.log('Card on table clicked!');
+					// console.log('Card on table clicked!');
 					for(var card in Vroom.entityList[table].list) {
 						if(Vroom.entityList[table].list[card].entityID === this._id) {
 							Vroom.entityList[table].list[card].applyCardEffect();
@@ -206,7 +207,7 @@ Card.prototype.applyCardEffect = function() {
 		break;
 	}
 	
-	console.log('Effect applied.');
+	// console.log('Effect applied.');
 };
 
 Card.prototype.addToPlayerDeck = function() {
@@ -223,16 +224,15 @@ Card.prototype.addToTable = function() {
 Card.prototype.deleteCard = function() {
 	this.removeFromTable();
 	Vroom.deleteEntity(this.entityID);
-	console.log('Card deleted permanently.');
+	// console.log('Card deleted permanently.');
 };
 
 Card.prototype.removeFromTable = function() {
 	for(var card in Vroom.entityList[table].list) {
-		console.log(Vroom.entityList[table].list[card].entityID, this.entityID);
 		if(Vroom.entityList[table].list[card].entityID == this.entityID) {
 			Vroom.entityList[table].list.splice(card, 1);
 			this.deleteCard();
-			console.log('Card removed.');
+			// console.log('Card removed.');
 		}
 	}
 };
@@ -329,14 +329,15 @@ function PublicWorkCard() {
 ////////////////////////////// CARD HANDELING //////////////////////////////
 function addCardsToTable() {
 	while(Vroom.entityList[table].list.length < Vroom.entityList[table].limit) {
-		var randomNumber = Math.random() * 10;
+		var randomNumber = Math.floor((Math.random() * 10) + 1);
+		console.log(randomNumber);
 		var card = null;
 		switch(true) {
-			case (randomNumber < 9):
+			case (randomNumber < 10):
 				card = new DevelopmentCard();
 			break;
 
-			case (randomNumber <= 10):
+			case (randomNumber == 10):
 				card = new PublicWorkCard();
 			break;
 		}
@@ -357,10 +358,51 @@ function clearTable() {
 
 
 ////////////////////////////// UI ELEMENTS //////////////////////////////
+var background = Vroom.registerEntity({
+	pos: {
+		x: 0,
+		y: 0,
+	},
+	image: new VroomSprite('sprites/design/background.jpg', false),
+
+	render: function(camera) {
+		Vroom.ctx.mozImageSmoothingEnabled = false;
+		Vroom.ctx.webkitImageSmoothingEnabled = false;
+		Vroom.ctx.msImageSmoothingEnabled = false;
+		Vroom.ctx.imageSmoothingEnabled = false;
+		this.image.render(this.pos.x, this.pos.y, this.image.dim.width * LARGE_PIXEL_SCALE, this.image.dim.height * LARGE_PIXEL_SCALE);
+	},
+});
+
+var dictator = Vroom.registerEntity({
+	pos: {
+		x: Vroom.dim.width / 4,
+		y: 13 * LARGE_PIXEL_SCALE,
+	},
+	dim: {
+		width: 42,
+		height: 70,
+	},
+	thinkingAnimation: new VroomSprite('sprites/design/dictator_thinking.png', true, 20, 42, 70, 8, 0),
+	activeAnimation: {},
+
+	init: function() {
+		this.activeAnimation = this.thinkingAnimation;
+	},
+
+	update: function(step) {
+		this.activeAnimation.update(step);
+	},
+
+	render: function() {
+		this.activeAnimation.render(this.pos.x, this.pos.y, this.dim.width * LARGE_PIXEL_SCALE, this.dim.height * LARGE_PIXEL_SCALE);
+	},
+});
+
 var developmentScreen = Vroom.registerEntity({
 	pos: {
 		x: 50,
-		y: 160,
+		y: 100,
 	},
 	scale: 0.7,
 	image: new VroomSprite('sprites/ui/rocket_screen.png', false),
