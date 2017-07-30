@@ -163,8 +163,8 @@ var Vroom = {
 			iterpolatedValue = targetValue - value;
 		}
 
-		if(Math.abs(iterpolatedValue) < 0.00) {
-			iterpolatedValue = 0;
+		if(Math.abs(targetValue - value) < 0.001) {
+			iterpolatedValue = targetValue - value;
 		}
 
 		return iterpolatedValue;
@@ -285,7 +285,7 @@ var Vroom = {
 
 			return Vroom.isMouseOverArea(pos, dim, relativeToCamera);
 		}
-		
+
 		return false;
 	},
 
