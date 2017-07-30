@@ -253,29 +253,39 @@ var Vroom = {
 		Vroom.mouseState.clicked = false;
 	},
 
+	isMouseOverArea: function(pos, dim, relativeToCamera) {
+		if(typeof relativeToCamera === 'undefined') {
+			relativeToCamera = true;
+		}
+
+		var areaPos = pos;
+		var areaDim = dim;
+
+		if(relativeToCamera) {
+			areaPos = Vroom.getCameraRelativePos(areaPos);
+			areaDim = Vroom.getCameraRelativeDim(areaDim);
+		}
+
+		if( Vroom.mouseState.pos.x > areaPos.x &&
+			Vroom.mouseState.pos.x < areaPos.x + areaDim.width &&
+			Vroom.mouseState.pos.y > areaPos.y &&
+			Vroom.mouseState.pos.y < areaPos.y + areaDim.height
+		) {
+			return true;
+		}
+
+		return false;
+	},
+
 	isAreaClicked: function(pos, dim, relativeToCamera) {
 		if(Vroom.mouseState.clicked) {
 			if(typeof relativeToCamera === 'undefined') {
 				relativeToCamera = true;
 			}
 
-			var areaPos = pos;
-			var areaDim = dim;
-
-			if(relativeToCamera) {
-				areaPos = Vroom.getCameraRelativePos(areaPos);
-				areaDim = Vroom.getCameraRelativeDim(areaDim);
-			}
-
-			if( Vroom.mouseState.pos.x > areaPos.x &&
-				Vroom.mouseState.pos.x < areaPos.x + areaDim.width &&
-				Vroom.mouseState.pos.y > areaPos.y &&
-				Vroom.mouseState.pos.y < areaPos.y + areaDim.height
-			) {
-				return true;
-			}
+			return Vroom.isMouseOverArea(pos, dim, relativeToCamera);
 		}
-
+		
 		return false;
 	},
 
