@@ -24,6 +24,41 @@ var maxUnrest = 100;
 
 var gameEnd = false;
 
+var modifiers = {
+	ignoreUnrest: {
+		active: false,
+		used: false,
+		deactivateIfDone: function() {
+			if(this.active && this.used) {
+				this.active = false;
+				this.used = false;
+			}
+		},
+	},
+	drawTwoCards: {
+		active: false,
+		cardsDrawn: 0,
+		deactivateIfDone: function() {
+			if(this.active && this.cardsDrawn == Vroom.entityList[table].drawLimit) {
+				this.active = false;
+				this.cardsDrawn = 0;
+			}
+		},
+	},
+	doubleStats: {
+		active: false,
+		appliedToUnrest: false,
+		appliedToEffect: false,
+		deactivateIfDone: function() {
+			if(this.active && this.appliedToUnrest && this.appliedToEffect) {
+				this.active = false;
+				this.appliedToUnrest = false;
+				this.appliedToEffect = false;
+			}
+		},
+	}
+};
+
 var development = {
 	guidance: 0,
 	computer: 0,
@@ -42,16 +77,39 @@ var developmentRequirements = {
 	propulsion: 10,
 };
 
-var playerHand = {
+var hand = Vroom.registerEntity({
+	layer: 5,
 	list: [],
 	limit: 3,
+	boxMargin: 50,
 	cardMargin: 10,
 	cardScale: 0.5,
 	pos: {
-		x: 600,
-		y: 500,
-	}
-};
+		x: 650,
+		y: 480,
+	},
+	dim: {
+		width: 540,
+		height: 280,
+	},
+
+	reOrderCards: function() {
+		var counter = 0;
+		for(var card in this.list) {
+			Vroom.entityList[this.list[card].entityID].order = counter;
+			counter++;
+		}
+	},
+
+	render: function(camera) {
+		Vroom.ctx.fillStyle = 'rgba(000,000,000, 0.6)';
+		Vroom.ctx.fillRect(this.pos.x - this.boxMargin, this.pos.y - this.boxMargin, this.dim.width, this.dim.height);
+		Vroom.ctx.fillStyle = '#fff';
+		Vroom.ctx.textAlign = 'start';
+		Vroom.ctx.font = '21px lcd_solid';
+		Vroom.ctx.fillText("YOUR HAND (" + this.list.length + "/" + this.limit + "):", this.pos.x, this.pos.y + 30 - this.boxMargin);
+	},
+});
 
 var table = Vroom.registerEntity({
 	layer: 2,
@@ -80,6 +138,36 @@ var table = Vroom.registerEntity({
 	},
 });
 
+
+
+
+
+////////////////////////////// UTILITY FUNCTIONS //////////////////////////////
+function addUnrest(unrestValue) {
+	if(modifiers['doubleStats'].active && !modifiers['doubleStats'].appliedToUnrest) {
+		unrestValue = unrestValue * 2;
+		modifiers['doubleStats'].appliedToUnrest = true;
+		modifiers['doubleStats'].deactivateIfDone();
+	}
+
+	if(modifiers['ignoreUnrest'].active) {
+		modifiers['ignoreUnrest'].used = true;
+		modifiers['ignoreUnrest'].deactivateIfDone();
+	} else {
+		unrest += unrestValue;
+	}
+}
+
+function subtractUnrest(unrestValue) {
+	if(modifiers['doubleStats'].active && !modifiers['doubleStats'].appliedToUnrest && !modifiers['doubleStats'].appliedToEffect) {
+		unrestValue = unrestValue * 2;
+		modifiers['doubleStats'].appliedToUnrest = true;
+		modifiers['doubleStats'].appliedToEffect = true;
+		modifiers['doubleStats'].deactivateIfDone();
+	}
+	unrest -= unrestValue;
+}
+
 function restartGame() {
 	unrest = 20;
 	maxUnrest = 100;
@@ -95,10 +183,11 @@ function restartGame() {
 	};
 
 	clearTable();
+	clearHand();
 	addCardsToTable();
 
-	console.log('RESTARTED');
 }
+
 
 
 
@@ -136,7 +225,7 @@ function Card(text, type, effects, effectValue, unrestValue) {
 		text: this.text,
 		pos: {
 			x: 0,
-			y: -400,
+			y: -600,
 		},
 		targetPos: {
 			x: 0,
@@ -153,7 +242,8 @@ function Card(text, type, effects, effectValue, unrestValue) {
 			}
 
 			if(this.location === HAND) {
-				this.pos.x = playerHand.pos.x + (playerHand.cardMargin * this.order) + ((this.image.dim.width * this.scale) * this.order);
+				this.targetPos.x = Vroom.entityList[hand].pos.x + (Vroom.entityList[hand].cardMargin * this.order) + ((this.image.dim.width * this.scale) * this.order);
+				this.targetPos.y = Vroom.entityList[hand].pos.y;
 			}
 
 			// Move card if not at target position
@@ -166,7 +256,6 @@ function Card(text, type, effects, effectValue, unrestValue) {
 			// Scale card if not at target scale
 			if(this.scale !== this.targetScale) {
 				var lerpedScale = Vroom.lerpValue(step, this.scale, this.targetScale, 0.8);
-				console.log('lol', this.scale, this.targetScale, lerpedScale);
 				this.scale += lerpedScale;
 			}
 
@@ -184,15 +273,51 @@ function Card(text, type, effects, effectValue, unrestValue) {
 
 				if(Vroom.isAreaClicked(this.pos, scaledDim)) {
 					if(this.location === TABLE) {
-						// console.log('Card on table clicked!');
 						for(var card in Vroom.entityList[table].list) {
 							if(Vroom.entityList[table].list[card].entityID === this._id) {
-								// Play dictator hitting animation
-								Vroom.entityList[dictator].hitPodium();
+								if(this.type === ACTION) {
+									if(Vroom.entityList[hand].list.length < Vroom.entityList[hand].limit) {
+										Vroom.entityList[table].list[card].addToHand();
+									}
+								} else {
+									// Play dictator hitting animation
+									Vroom.entityList[dictator].hitPodium();
 
-								// Apply card effect and remove card from table
-								Vroom.entityList[table].list[card].applyCardEffect();
-								Vroom.entityList[table].list[card].removeFromTable();
+									// Apply card effect and remove card from table
+									Vroom.entityList[table].list[card].applyCardEffect();
+									Vroom.entityList[table].list[card].deleteCard();
+									Vroom.entityList[table].list[card].removeFromTable();
+								}
+							}
+						}
+					} else if(this.location === HAND) {
+						for(var card in Vroom.entityList[hand].list) {
+							if(Vroom.entityList[hand].list[card].entityID === this._id) {
+								//'discardTable',
+								//'drawTwoCards',
+								//'ignoreUnrest',
+								//'doubleStats',
+								switch(this.effects) {
+									case 'discardTable':
+										clearTable();
+									break;
+
+									case 'drawTwoCards':
+										Vroom.entityList[table].drawLimit = 2;
+										modifiers['drawTwoCards'].active = true;
+									break;
+
+									case 'ignoreUnrest':
+										modifiers['ignoreUnrest'].active = true;
+									break;
+
+									case 'doubleStats':
+										modifiers['doubleStats'].active = true;
+									break;
+								}
+
+								Vroom.entityList[hand].list[card].deleteCard();
+								Vroom.entityList[hand].list[card].removeFromHand();
 							}
 						}
 					}
@@ -205,63 +330,70 @@ function Card(text, type, effects, effectValue, unrestValue) {
 				// Set alpha value
 				Vroom.ctx.globalAlpha = this.alpha;
 
-				if(this.location === TABLE) {
-					// Card image
-					this.image.render(this.pos.x, this.pos.y, this.image.dim.width * this.scale, this.image.dim.height * this.scale);
+				// Card image
+				this.image.render(this.pos.x, this.pos.y, this.image.dim.width * this.scale, this.image.dim.height * this.scale);
 
-					// Style
-					Vroom.ctx.textAlign = 'center';
-					Vroom.ctx.font = (21 * this.scale) + 'px lcd_solid';
+				// Card contents
+				Vroom.ctx.textAlign = 'center';
+				Vroom.ctx.font = (21 * this.scale) + 'px lcd_solid';
 
-					if(this.type === DEVELOPMENT) {
-						Vroom.ctx.fillStyle = '#333';
+				if(this.type === DEVELOPMENT) {
+					Vroom.ctx.fillStyle = '#333';
 
-						// Text
-						Vroom.multilineText(this.text, this.pos.x + (140 * this.scale), this.pos.y + (60 * this.scale), 15);
+					// Text
+					Vroom.multilineText(this.text, this.pos.x + (140 * this.scale), this.pos.y + (60 * this.scale), 15);
 
-						Vroom.ctx.fillStyle = '#24D7DD';
+					Vroom.ctx.fillStyle = '#24D7DD';
 
-						// Effects
-						Vroom.ctx.fillText(this.effects.toUpperCase(), this.pos.x + (this.image.dim.width / 2) * this.scale, this.pos.y + (200 * this.scale));
+					// Effects
+					Vroom.ctx.font = (32 * this.scale) + 'px lcd_solid';
 
-						Vroom.ctx.font = (60 * this.scale) + 'px lcd_solid';
+					Vroom.ctx.fillText(this.effects.toUpperCase(), this.pos.x + (this.image.dim.width / 2) * this.scale, this.pos.y + (200 * this.scale));
 
-						// Effect value
-						Vroom.ctx.fillText(String(this.effectValue), this.pos.x + (this.image.dim.width / 2) * this.scale, this.pos.y + (346 * this.scale));
-					}
+					Vroom.ctx.font = (60 * this.scale) + 'px lcd_solid';
 
-					if(this.type === PUBLIC_WORK) {
-						Vroom.ctx.fillStyle = '#333';
-						
-						// Text
-						Vroom.multilineText(this.text, this.pos.x + (140 * this.scale), this.pos.y + (60 * this.scale), 15);
+					// Effect value
+					Vroom.ctx.fillText(String(this.effectValue), this.pos.x + (this.image.dim.width / 2) * this.scale, this.pos.y + (346 * this.scale));
+				}
 
-						Vroom.ctx.fillStyle = '#1DC936';
-						Vroom.ctx.font = (60 * this.scale) + 'px lcd_solid';
+				if(this.type === PUBLIC_WORK) {
+					Vroom.ctx.fillStyle = '#333';
+					
+					// Text
+					Vroom.multilineText(this.text, this.pos.x + (140 * this.scale), this.pos.y + (60 * this.scale), 15);
 
-						// Happiness value
-						Vroom.ctx.fillText(String(this.effectValue), this.pos.x + ((this.image.dim.width / 2) * this.scale), this.pos.y + 346 * this.scale);
-					}
+					Vroom.ctx.fillStyle = '#1DC936';
+					Vroom.ctx.font = (60 * this.scale) + 'px lcd_solid';
 
-					// Unrest
+					// Happiness value
+					Vroom.ctx.fillText(String(this.effectValue), this.pos.x + ((this.image.dim.width / 2) * this.scale), this.pos.y + 346 * this.scale);
+				}
+
+				if(this.type === ACTION) {
+					Vroom.ctx.fillStyle = '#333';
+					Vroom.multilineText(this.text, this.pos.x + ((this.image.dim.width / 2) * this.scale), this.pos.y + (60 * this.scale), 15);
+				}
+
+				// Unrest
+				if(this.type !== ACTION) {
 					Vroom.ctx.fillStyle = '#fff';
 					Vroom.ctx.font = (40 * this.scale) + 'px lcd_solid';
 					Vroom.ctx.fillText(String(this.unrestValue), this.pos.x + (this.image.dim.width - 30) * this.scale, this.pos.y + (this.image.dim.height - 16) * this.scale);
+				}
 
-					// On mouse over
-					if(this.mouseOver) {
-						// Draw triangle under card
-						var triangleWidth = 30;
-						var triangleHeight = 15;
-						var triangleHalfWidth = triangleWidth / 2;
-						var cardCenterX = (this.pos.x + (this.image.dim.width / 2) * this.scale);
-						var startY = this.pos.y + (this.image.dim.height * this.scale) + 15;
-						Vroom.ctx.beginPath();
-						Vroom.ctx.moveTo(cardCenterX, startY);
-						Vroom.ctx.lineTo(cardCenterX + triangleHalfWidth, startY + triangleHeight);
-						Vroom.ctx.lineTo(cardCenterX - triangleHalfWidth, startY + triangleHeight);
-						Vroom.ctx.fill();
-					}
+				// On mouse over
+				if(this.mouseOver) {
+					// Draw triangle under card
+					var triangleWidth = 30;
+					var triangleHeight = 15;
+					var triangleHalfWidth = triangleWidth / 2;
+					var cardCenterX = (this.pos.x + (this.image.dim.width / 2) * this.scale);
+					var startY = this.pos.y + (this.image.dim.height * this.scale) + 15;
+					Vroom.ctx.beginPath();
+					Vroom.ctx.moveTo(cardCenterX, startY);
+					Vroom.ctx.lineTo(cardCenterX + triangleHalfWidth, startY + triangleHeight);
+					Vroom.ctx.lineTo(cardCenterX - triangleHalfWidth, startY + triangleHeight);
+					Vroom.ctx.fill();
 				}
 
 				// Reset alpha
@@ -272,46 +404,55 @@ function Card(text, type, effects, effectValue, unrestValue) {
 }
 
 Card.prototype.applyCardEffect = function() {
-	unrest += this.unrestValue;
+	addUnrest(this.unrestValue);
 	switch(this.type) {
 		case DEVELOPMENT:
 			development[this.effects] += this.effectValue;
 		break;
 
 		case PUBLIC_WORK:
-			unrest -= this.effectValue;
+			subtractUnrest(this.effectValue);
 		break;
 	}
 	
-	// console.log('Effect applied.');
 };
 
-Card.prototype.addToPlayerHand = function() {
+Card.prototype.addToHand = function() {
 	Vroom.entityList[this.entityID].location = HAND;
-	Vroom.entityList[this.entityID].targetScale = playerHand.cardScale;
-	Vroom.entityList[this.entityID].targetPos = playerHand.pos;
-	playerHand[this.entityID] = this;
+	Vroom.entityList[this.entityID].layer = Vroom.entityList[hand].layer;
+	Vroom.entityList[this.entityID].targetScale = Vroom.entityList[hand].cardScale;
+	Vroom.entityList[this.entityID].targetPos.x = Vroom.entityList[hand].pos.x;
+	Vroom.entityList[this.entityID].targetPos.y = Vroom.entityList[hand].pos.y;
+	Vroom.entityList[this.entityID].order = Vroom.entityList[hand].list.length;
+	Vroom.entityList[hand].list.push(this);
+	this.removeFromTable();
 };
 
 Card.prototype.addToTable = function() {
 	Vroom.entityList[this.entityID].location = TABLE;
+	Vroom.entityList[this.entityID].layer = Vroom.entityList[table].layer;
 	Vroom.entityList[this.entityID].order = Vroom.entityList[table].list.length;
 	Vroom.entityList[this.entityID].targetScale = Vroom.entityList[table].cardScale;
 	Vroom.entityList[table].list.push(this);
 };
 
 Card.prototype.deleteCard = function() {
-	this.removeFromTable();
 	Vroom.deleteEntity(this.entityID);
-	// console.log('Card deleted permanently.');
 };
 
 Card.prototype.removeFromTable = function() {
 	for(var card in Vroom.entityList[table].list) {
 		if(Vroom.entityList[table].list[card].entityID == this.entityID) {
 			Vroom.entityList[table].list.splice(card, 1);
-			this.deleteCard();
-			// console.log('Card removed.');
+		}
+	}
+};
+
+Card.prototype.removeFromHand = function() {
+	for(var card in Vroom.entityList[hand].list) {
+		if(Vroom.entityList[hand].list[card].entityID == this.entityID) {
+			Vroom.entityList[hand].list.splice(card, 1);
+			Vroom.entityList[hand].reOrderCards();
 		}
 	}
 };
@@ -410,8 +551,28 @@ function ActionCard() {
 	];
 
 	var effect = effects[Math.floor(Math.random() * effects.length)];
+	var text = "";
 
-	return new Card('', ACTION, effects, 0, 0);
+	switch(effect) {
+		case 'discardTable':
+			text = "Discard cards\nand draw new\nones";
+		break;
+
+		case 'drawTwoCards':
+			text = "Draw two cards\nthis turn";
+		break;
+
+		case 'ignoreUnrest':
+			text = "Draw card without\nit causing unrest";
+		break;
+
+		case 'doubleStats':
+			text = "Double the stats\non the next card\nyou draw.";
+		break;
+
+	}
+
+	return new Card(text, ACTION, effect, 0, 0);
 }
 
 
@@ -422,15 +583,18 @@ function ActionCard() {
 function addCardsToTable() {
 	while(Vroom.entityList[table].list.length < Vroom.entityList[table].limit) {
 		var randomNumber = Math.floor((Math.random() * 10) + 1);
-		console.log(randomNumber);
 		var card = null;
 		switch(true) {
-			case (randomNumber < 10):
+			case (randomNumber <= 9):
 				card = new DevelopmentCard();
 			break;
 
-			case (randomNumber == 10):
+			case (randomNumber < 10):
 				card = new PublicWorkCard();
+			break;
+
+			case (randomNumber == 10):
+				card = new ActionCard();
 			break;
 		}
 
@@ -439,11 +603,19 @@ function addCardsToTable() {
 }
 
 function clearTable() {
-	for(var card in Vroom.entityList[table].list) {
-		Vroom.deleteEntity(Vroom.entityList[table].list[card].entityID);
+	for(var i = Vroom.entityList[table].list.length - 1; i >= 0; i--) {
+		Vroom.deleteEntity(Vroom.entityList[table].list[i].entityID);
 	}
 
 	Vroom.entityList[table].list = [];
+}
+
+function clearHand() {
+	for(var i = Vroom.entityList[hand].list.length - 1; i >= 0; i--) {
+		Vroom.deleteEntity(Vroom.entityList[hand].list[i].entityID);
+	}
+
+	Vroom.entityList[hand].list = [];
 }
 
 
