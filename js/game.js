@@ -19,10 +19,12 @@ var LARGE_PIXEL_SCALE = Vroom.dim.width / 240;
 
 
 // Gameplay variables
+var introVisible = true;
 var unrest = 20;
 var maxUnrest = 100;
 
 var gameEnd = false;
+var gameWin = false;
 
 var modifiers = {
 	ignoreUnrest: {
@@ -42,6 +44,7 @@ var modifiers = {
 			if(this.active && this.cardsDrawn == Vroom.entityList[table].drawLimit) {
 				this.active = false;
 				this.cardsDrawn = 0;
+				Vroom.entityList[table].drawLimit = 1;
 			}
 		},
 	},
@@ -159,12 +162,6 @@ function addUnrest(unrestValue) {
 }
 
 function subtractUnrest(unrestValue) {
-	if(modifiers['doubleStats'].active && !modifiers['doubleStats'].appliedToUnrest && !modifiers['doubleStats'].appliedToEffect) {
-		unrestValue = unrestValue * 2;
-		modifiers['doubleStats'].appliedToUnrest = true;
-		modifiers['doubleStats'].appliedToEffect = true;
-		modifiers['doubleStats'].deactivateIfDone();
-	}
 	unrest -= unrestValue;
 }
 
@@ -172,6 +169,11 @@ function restartGame() {
 	unrest = 20;
 	maxUnrest = 100;
 	gameEnd = false;
+	gameWin = false;
+
+	for(var modifier in modifiers) {
+		modifiers[modifier].active = false;
+	}
 
 	development = {
 		guidance: 0,
@@ -196,6 +198,16 @@ function restartGame() {
 Vroom.mainUpdateLoopExtension = function(step) {
 	if(unrest >= maxUnrest) {
 		gameEnd = true;
+	}
+	if(
+		development.guidance === developmentRequirements.guidance &&
+		development.computer === developmentRequirements.computer &&
+		development.sensors === developmentRequirements.sensors &&
+		development.rocketFuel === developmentRequirements.rocketFuel &&
+		development.control === developmentRequirements.control &&
+		development.propulsion === developmentRequirements.propulsion
+	) {
+		gameWin = true;
 	}
 };
 
@@ -293,10 +305,6 @@ function Card(text, type, effects, effectValue, unrestValue) {
 					} else if(this.location === HAND) {
 						for(var card in Vroom.entityList[hand].list) {
 							if(Vroom.entityList[hand].list[card].entityID === this._id) {
-								//'discardTable',
-								//'drawTwoCards',
-								//'ignoreUnrest',
-								//'doubleStats',
 								switch(this.effects) {
 									case 'discardTable':
 										clearTable();
@@ -353,7 +361,11 @@ function Card(text, type, effects, effectValue, unrestValue) {
 					Vroom.ctx.font = (60 * this.scale) + 'px lcd_solid';
 
 					// Effect value
-					Vroom.ctx.fillText(String(this.effectValue), this.pos.x + (this.image.dim.width / 2) * this.scale, this.pos.y + (346 * this.scale));
+					var effectValue = this.effectValue;
+					if(modifiers['doubleStats'].active) {
+						effectValue = effectValue * 2;
+					}
+					Vroom.ctx.fillText(String(effectValue), this.pos.x + (this.image.dim.width / 2) * this.scale, this.pos.y + (346 * this.scale));
 				}
 
 				if(this.type === PUBLIC_WORK) {
@@ -366,7 +378,11 @@ function Card(text, type, effects, effectValue, unrestValue) {
 					Vroom.ctx.font = (60 * this.scale) + 'px lcd_solid';
 
 					// Happiness value
-					Vroom.ctx.fillText(String(this.effectValue), this.pos.x + ((this.image.dim.width / 2) * this.scale), this.pos.y + 346 * this.scale);
+					var happinessValue = this.effectValue;
+					if(modifiers['doubleStats'].active) {
+						happinessValue = happinessValue * 2;
+					}
+					Vroom.ctx.fillText(String(happinessValue), this.pos.x + ((this.image.dim.width / 2) * this.scale), this.pos.y + 346 * this.scale);
 				}
 
 				if(this.type === ACTION) {
@@ -378,7 +394,15 @@ function Card(text, type, effects, effectValue, unrestValue) {
 				if(this.type !== ACTION) {
 					Vroom.ctx.fillStyle = '#fff';
 					Vroom.ctx.font = (40 * this.scale) + 'px lcd_solid';
-					Vroom.ctx.fillText(String(this.unrestValue), this.pos.x + (this.image.dim.width - 30) * this.scale, this.pos.y + (this.image.dim.height - 16) * this.scale);
+
+					var unrestValue = this.unrestValue;
+					if(modifiers['doubleStats'].active) {
+						unrestValue = unrestValue * 2;
+					}
+					if(modifiers['ignoreUnrest'].active) {
+						unrestValue = 0;
+					}
+					Vroom.ctx.fillText(String(unrestValue), this.pos.x + (this.image.dim.width - 30) * this.scale, this.pos.y + (this.image.dim.height - 16) * this.scale);
 				}
 
 				// On mouse over
@@ -405,13 +429,23 @@ function Card(text, type, effects, effectValue, unrestValue) {
 
 Card.prototype.applyCardEffect = function() {
 	addUnrest(this.unrestValue);
+	
+	var effectValue = this.effectValue;
+
+	if(modifiers['doubleStats'].active && !modifiers['doubleStats'].appliedToEffect) {
+		effectValue = effectValue * 2;
+		modifiers['doubleStats'].appliedToEffect = true;
+		modifiers['doubleStats'].deactivateIfDone();
+	}
+
 	switch(this.type) {
 		case DEVELOPMENT:
-			development[this.effects] += this.effectValue;
+			development[this.effects] += effectValue;
+
 		break;
 
 		case PUBLIC_WORK:
-			subtractUnrest(this.effectValue);
+			subtractUnrest(effectValue);
 		break;
 	}
 	
@@ -426,6 +460,11 @@ Card.prototype.addToHand = function() {
 	Vroom.entityList[this.entityID].order = Vroom.entityList[hand].list.length;
 	Vroom.entityList[hand].list.push(this);
 	this.removeFromTable();
+
+	if(modifiers['drawTwoCards'].active) {
+		modifiers['drawTwoCards'].cardsDrawn += 1;
+		modifiers['drawTwoCards'].deactivateIfDone();
+	}
 };
 
 Card.prototype.addToTable = function() {
@@ -434,6 +473,11 @@ Card.prototype.addToTable = function() {
 	Vroom.entityList[this.entityID].order = Vroom.entityList[table].list.length;
 	Vroom.entityList[this.entityID].targetScale = Vroom.entityList[table].cardScale;
 	Vroom.entityList[table].list.push(this);
+
+	if(modifiers['drawTwoCards'].active) {
+		modifiers['drawTwoCards'].cardsDrawn += 1;
+		modifiers['drawTwoCards'].deactivateIfDone();
+	}
 };
 
 Card.prototype.deleteCard = function() {
@@ -482,34 +526,39 @@ function DevelopmentCard() {
 	switch(selectedType) {
 		case 'guidance':
 			texts = [
-				'Paper map',
+				'Take a part a old\nGPS',
+				'Memorize map in\nthe local Zoo'
 			];
 		break;
 
 		case 'computer':
 			texts = [
-				'Calculator parts',
+				'Gather calculator\nparts',
+				'Take some "unused"\ncomputers from the\nlocal elementary\nschool'
 			];
 		break;
 
 		case 'sensors':
 			texts = [
 				'Sensor research',
-				'Smoke detector',
-				'Canary birds',
-				'Compass and tape',
+				'Sort of learn how\nthe rocket is\nsupposed to smell',
+				'Get a bunch of\ncanary birds',
+				'Test out some\ncontraptions made\nof mostly tape'
 			];
 		break;
 
 		case 'rocketFuel':
 			texts = [
-				'Unstable explosives',
+				'Test some unstable\nexplosives',
+				'Recycle old grenades',
+				'Tape together some\nRPGs'
 			];
 		break;
 
 		case 'control':
 			texts = [
 				'Random sheet metal',
+				'Tin foil should work'
 			];
 		break;
 
@@ -555,7 +604,7 @@ function ActionCard() {
 
 	switch(effect) {
 		case 'discardTable':
-			text = "Discard cards\nand draw new\nones";
+			text = "Discard all cards\n(does not apply to\ncards in your hand)";
 		break;
 
 		case 'drawTwoCards':
@@ -563,7 +612,7 @@ function ActionCard() {
 		break;
 
 		case 'ignoreUnrest':
-			text = "Draw card without\nit causing unrest";
+			text = "Draw a card without\nit causing unrest";
 		break;
 
 		case 'doubleStats':
@@ -582,19 +631,19 @@ function ActionCard() {
 ////////////////////////////// CARD HANDELING //////////////////////////////
 function addCardsToTable() {
 	while(Vroom.entityList[table].list.length < Vroom.entityList[table].limit) {
-		var randomNumber = Math.floor((Math.random() * 10) + 1);
+		var randomNumber = (Math.random() * 10) + 1;
 		var card = null;
 		switch(true) {
-			case (randomNumber <= 9):
+			case (randomNumber < 9.5):
 				card = new DevelopmentCard();
 			break;
 
-			case (randomNumber < 10):
-				card = new PublicWorkCard();
+			case (randomNumber < 10.5):
+				card = new ActionCard();
 			break;
 
-			case (randomNumber == 10):
-				card = new ActionCard();
+			case (randomNumber > 10.5):
+				card = new PublicWorkCard();
 			break;
 		}
 
@@ -622,12 +671,67 @@ function clearHand() {
 
 
 ////////////////////////////// UI ELEMENTS //////////////////////////////
-var background = Vroom.registerEntity({
+var introScreen = Vroom.registerEntity({
+	layer: 5,
 	pos: {
 		x: 0,
 		y: 0,
 	},
+	buttonPos: {
+		x: (Vroom.dim.width / 2) - 70,
+		y: 650,
+	},
+	buttonDim: {
+		width: 140,
+		height: 50,
+	},
+	image: new VroomSprite('sprites/design/intro_screen.jpg', true, 1, 240, 135, 4, 0),
+
+	update: function(step) {
+		if(introVisible) {
+			if(Vroom.isAreaClicked(this.buttonPos, this.buttonDim)) {
+				if(this.image.frameIndex == this.image.numberOfFrames - 1) {
+					introVisible = false;
+				} else {
+					this.image.update(step);
+				}
+			}
+		}
+	},
+
+	render: function(camera) {
+		if(introVisible) {
+			Vroom.ctx.mozImageSmoothingEnabled = false;
+			Vroom.ctx.webkitImageSmoothingEnabled = false;
+			Vroom.ctx.msImageSmoothingEnabled = false;
+			Vroom.ctx.imageSmoothingEnabled = false;
+
+			this.image.render(this.pos.x, this.pos.y, this.image.dim.width * LARGE_PIXEL_SCALE, this.image.dim.height * LARGE_PIXEL_SCALE);
+
+			Vroom.ctx.textAlign = 'center';
+
+			// Button
+			Vroom.ctx.fillStyle = '#FC452D';
+			Vroom.ctx.fillRect(this.buttonPos.x, this.buttonPos.y, this.buttonDim.width, this.buttonDim.height);
+
+			// Button text
+			Vroom.ctx.fillStyle = '#fff';
+			var text = 'NEXT';
+			if(this.image.frameIndex == this.image.numberOfFrames - 1) {
+				text = 'START';
+			}
+			Vroom.ctx.fillText(text, this.buttonPos.x + (this.buttonDim.width / 2), this.buttonPos.y + 33);
+		}
+	},
+
+});
+
+var background = Vroom.registerEntity({
 	layer: 1,
+	pos: {
+		x: 0,
+		y: 0,
+	},
 	image: new VroomSprite('sprites/design/background.jpg', false),
 
 	render: function(camera) {
@@ -644,12 +748,22 @@ var crowd = Vroom.registerEntity({
 		x: 0,
 		y: 0,
 	},
+	targetPos: {
+		x: 0,
+		y: 0,
+	},
 	layer: 4,
 	animation: new VroomSprite('sprites/design/crowd.png', true, 40, 240, 135, 2, 0),
 
 	update: function(step) {
 		this.animation.update(step);
-		this.pos.y = Math.max((maxUnrest - unrest) * 4, 0);
+		this.targetPos.y = Math.max((maxUnrest - unrest) * 4, 0);
+
+		if(this.pos.x !== this.targetPos.x || this.pos.y !== this.targetPos.y) {
+			var lerpedPosition = Vroom.lerpPosition(step, this.pos, this.targetPos, 0.2);
+			this.pos.x += lerpedPosition.x;
+			this.pos.y += lerpedPosition.y;
+		}
 	},
 
 	render: function(camera) {
@@ -809,8 +923,8 @@ var gameEndMessage = Vroom.registerEntity({
 		y: (Vroom.dim.height / 2) - 100,
 	},
 	dim: {
-		width: 400,
-		height: 200,
+		width: 500,
+		height: 250,
 	},
 	buttonPos: {
 		x: 0,
@@ -824,7 +938,7 @@ var gameEndMessage = Vroom.registerEntity({
 	init: function() {
 		this.buttonPos = {
 			x: this.pos.x + (this.dim.width / 2) - 80,
-			y: this.pos.y + 130,
+			y: this.pos.y + 170,
 		};
 	},
 
@@ -841,15 +955,75 @@ var gameEndMessage = Vroom.registerEntity({
 	render: function(camera) {
 		if(gameEnd) {
 			// Box
-			Vroom.ctx.fillStyle = '#98B9FF';
+			Vroom.ctx.fillStyle = '#333335';
 			Vroom.ctx.fillRect(this.pos.x, this.pos.y, this.dim.width, this.dim.height);
 
 			// Text
 			Vroom.ctx.textAlign = 'center';
-			Vroom.ctx.font = 14.7 + 'px lcd_solid';
+			Vroom.ctx.font = 20 + 'px lcd_solid';
 			Vroom.ctx.fillStyle = '#fff';
 			Vroom.ctx.fillText('Oh no!', this.pos.x + (this.dim.width / 2), this.pos.y + 50);
-			Vroom.ctx.fillText('The people want to govern themselves!', this.pos.x + (this.dim.width / 2), this.pos.y + 70);
+			Vroom.multilineText('The people want democracy and you are\nnot done with your rocket yet! Is\nlife event worth living if you can\nnever go to space?', this.pos.x + (this.dim.width / 2), this.pos.y + 90, 20);
+
+			// Button
+			Vroom.ctx.fillStyle = '#FC452D';
+			Vroom.ctx.fillRect(this.buttonPos.x, this.buttonPos.y, this.buttonDim.width, this.buttonDim.height);
+
+			// Button text
+			Vroom.ctx.fillStyle = '#fff';
+			Vroom.ctx.fillText('TRY AGAIN', this.buttonPos.x + (this.buttonDim.width / 2), this.buttonPos.y + 33);
+		}
+	},
+});
+
+var gameWinMessage = Vroom.registerEntity({
+	layer: 6,
+	pos: {
+		x: (Vroom.dim.width / 2) - 200,
+		y: (Vroom.dim.height / 2) - 100,
+	},
+	dim: {
+		width: 500,
+		height: 250,
+	},
+	buttonPos: {
+		x: 0,
+		y: 0,
+	},
+	buttonDim: {
+		width: 160,
+		height: 50,
+	},
+
+	init: function() {
+		this.buttonPos = {
+			x: this.pos.x + (this.dim.width / 2) - 80,
+			y: this.pos.y + 170,
+		};
+	},
+
+	update: function(step) {
+		if(gameWin) {
+			if(Vroom.isAreaClicked(this.buttonPos, this.buttonDim)) {
+				// Prevent further click events from triggering
+				Vroom.resetMouseState();
+				restartGame();
+			}
+		}
+	},
+
+	render: function(camera) {
+		if(gameWin) {
+			// Box
+			Vroom.ctx.fillStyle = '#CBB500';
+			Vroom.ctx.fillRect(this.pos.x, this.pos.y, this.dim.width, this.dim.height);
+
+			// Text
+			Vroom.ctx.textAlign = 'center';
+			Vroom.ctx.font = 20 + 'px lcd_solid';
+			Vroom.ctx.fillStyle = '#fff';
+			Vroom.ctx.fillText('YEAH!', this.pos.x + (this.dim.width / 2), this.pos.y + 50);
+			Vroom.multilineText('Well done! You finished your rocket\nbefore the people demanded democracy.\nTime to find a new planet to rule!', this.pos.x + (this.dim.width / 2), this.pos.y + 90, 20);
 
 			// Button
 			Vroom.ctx.fillStyle = '#FC452D';
