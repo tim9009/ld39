@@ -685,7 +685,7 @@ var introScreen = Vroom.registerEntity({
 		width: 140,
 		height: 50,
 	},
-	image: new VroomSprite('sprites/design/intro_screen.jpg', true, 1, 240, 135, 4, 0),
+	image: new VroomSprite('sprites/design/intro_screen.png', true, 1, 240, 135, 4, 0),
 
 	update: function(step) {
 		if(introVisible) {
