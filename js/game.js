@@ -843,7 +843,7 @@ var developmentScreen = Vroom.registerEntity({
 		if(development.guidance < developmentRequirements.guidance) {
 			Vroom.ctx.fillStyle = '#FC452D';
 		} else {
-			Vroom.ctx.fillStyle = '#1BDD37';
+			Vroom.ctx.fillStyle = '#2A6720';
 		}
 		Vroom.ctx.fillText(development.guidance + '/' + developmentRequirements.guidance, this.pos.x + (240 * this.scale), this.pos.y + (22 * this.scale));
 
@@ -851,7 +851,7 @@ var developmentScreen = Vroom.registerEntity({
 		if(development.computer < developmentRequirements.computer) {
 			Vroom.ctx.fillStyle = '#FC452D';
 		} else {
-			Vroom.ctx.fillStyle = '#1BDD37';
+			Vroom.ctx.fillStyle = '#2A6720';
 		}
 		Vroom.ctx.fillText(development.computer + '/' + developmentRequirements.computer, this.pos.x + (40 * this.scale), this.pos.y + (70 * this.scale));
 
@@ -859,7 +859,7 @@ var developmentScreen = Vroom.registerEntity({
 		if(development.sensors < developmentRequirements.sensors) {
 			Vroom.ctx.fillStyle = '#FC452D';
 		} else {
-			Vroom.ctx.fillStyle = '#1BDD37';
+			Vroom.ctx.fillStyle = '#2A6720';
 		}
 		Vroom.ctx.fillText(development.sensors + '/' + developmentRequirements.sensors, this.pos.x + (240 * this.scale), this.pos.y + (120 * this.scale));
 
@@ -867,7 +867,7 @@ var developmentScreen = Vroom.registerEntity({
 		if(development.rocketFuel < developmentRequirements.rocketFuel) {
 			Vroom.ctx.fillStyle = '#FC452D';
 		} else {
-			Vroom.ctx.fillStyle = '#1BDD37';
+			Vroom.ctx.fillStyle = '#2A6720';
 		}
 		Vroom.ctx.fillText(development.rocketFuel + '/' + developmentRequirements.rocketFuel, this.pos.x + (40 * this.scale), this.pos.y + (185 * this.scale));
 
@@ -875,7 +875,7 @@ var developmentScreen = Vroom.registerEntity({
 		if(development.control < developmentRequirements.control) {
 			Vroom.ctx.fillStyle = '#FC452D';
 		} else {
-			Vroom.ctx.fillStyle = '#1BDD37';
+			Vroom.ctx.fillStyle = '#2A6720';
 		}
 		Vroom.ctx.fillText(development.control + '/' + developmentRequirements.control, this.pos.x + (240 * this.scale), this.pos.y + (280 * this.scale));
 
@@ -883,7 +883,7 @@ var developmentScreen = Vroom.registerEntity({
 		if(development.propulsion < developmentRequirements.propulsion) {
 			Vroom.ctx.fillStyle = '#FC452D';
 		} else {
-			Vroom.ctx.fillStyle = '#1BDD37';
+			Vroom.ctx.fillStyle = '#2A6720';
 		}
 		Vroom.ctx.fillText(development.propulsion + '/' + developmentRequirements.propulsion, this.pos.x + (40 * this.scale), this.pos.y + (335 * this.scale));
 	},
