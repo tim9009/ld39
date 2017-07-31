@@ -963,7 +963,7 @@ var gameEndMessage = Vroom.registerEntity({
 			Vroom.ctx.font = 20 + 'px lcd_solid';
 			Vroom.ctx.fillStyle = '#fff';
 			Vroom.ctx.fillText('Oh no!', this.pos.x + (this.dim.width / 2), this.pos.y + 50);
-			Vroom.multilineText('The people want democracy and you are\nnot done with your rocket yet! Is\nlife event worth living if you can\nnever go to space?', this.pos.x + (this.dim.width / 2), this.pos.y + 90, 20);
+			Vroom.multilineText('The people want democracy and you are\nnot done with your rocket yet! Is\nlife even worth living if you can\nnever go to space?', this.pos.x + (this.dim.width / 2), this.pos.y + 90, 20);
 
 			// Button
 			Vroom.ctx.fillStyle = '#FC452D';
