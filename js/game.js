@@ -200,12 +200,12 @@ Vroom.mainUpdateLoopExtension = function(step) {
 		gameEnd = true;
 	}
 	if(
-		development.guidance === developmentRequirements.guidance &&
-		development.computer === developmentRequirements.computer &&
-		development.sensors === developmentRequirements.sensors &&
-		development.rocketFuel === developmentRequirements.rocketFuel &&
-		development.control === developmentRequirements.control &&
-		development.propulsion === developmentRequirements.propulsion
+		development.guidance >= developmentRequirements.guidance &&
+		development.computer >= developmentRequirements.computer &&
+		development.sensors >= developmentRequirements.sensors &&
+		development.rocketFuel >= developmentRequirements.rocketFuel &&
+		development.control >= developmentRequirements.control &&
+		development.propulsion >= developmentRequirements.propulsion
 	) {
 		gameWin = true;
 	}
