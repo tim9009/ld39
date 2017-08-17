@@ -665,6 +665,7 @@ function VroomSprite(imagePath, animated, timePerAnimationFrame, frameWidth, fra
 	this.elapsedTime = 0;
 	this.animated = false || animated;
 	this.loaded = false;
+	this.looping = false;
 
 	var sprite = this;
 	this.image.onload = function() {
@@ -682,6 +683,7 @@ function VroomSprite(imagePath, animated, timePerAnimationFrame, frameWidth, fra
 VroomSprite.prototype.reset = function() {
 	this.frameIndex = 0;
 	this.elapsedTime = 0;
+	this.looping = false;
 };
 
 VroomSprite.prototype.update = function(step) {
@@ -695,6 +697,7 @@ VroomSprite.prototype.update = function(step) {
 
 		if(this.frameIndex >= this.numberOfFrames) {
 			this.frameIndex = 0;
+			this.looping = true;
 		}
 	}
 };
