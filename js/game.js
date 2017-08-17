@@ -908,9 +908,19 @@ var publicUnrestMeter = Vroom.registerEntity({
 		width: Vroom.dim.width / maxUnrest,
 		height: 50,
 	},
+	targetDim: {
+		width: Vroom.dim.width / maxUnrest,
+		height: 50,
+	},
 
 	update: function(step) {
-		this.dim.width = (Vroom.dim.width / maxUnrest) * unrest;
+		this.targetDim.width = (Vroom.dim.width / maxUnrest) * unrest;
+		// Move card if not at target position
+		if(this.dim.width !== this.targetDim.width || this.dim.height !== this.targetDim.height) {
+			var lerpedDim = Vroom.lerpDimensions(step, this.dim, this.targetDim, 0.8);
+			this.dim.width += lerpedDim.width;
+			this.dim.height += lerpedDim.height;
+		}
 	},
 
 	render: function(camera) {
