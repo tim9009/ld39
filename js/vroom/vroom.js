@@ -177,6 +177,13 @@ var Vroom = {
 		};
 	},
 
+	lerpDimensions: function(step, dimensions, targetDimensions, lerpPercentage) {
+		return {
+			width: this.lerpValue(step, dimensions.width, targetDimensions.width, lerpPercentage),
+			height: this.lerpValue(step, dimensions.height, targetDimensions.height, lerpPercentage),
+		};
+	},
+
 	getDistance: function(pos1, pos2) {
 		return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
 	},
