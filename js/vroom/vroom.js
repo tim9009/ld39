@@ -665,7 +665,7 @@ function VroomSprite(imagePath, animated, timePerAnimationFrame, frameWidth, fra
 	this.elapsedTime = 0;
 	this.animated = false || animated;
 	this.loaded = false;
-	this.looping = false;
+	this.lastFrameEnding = false;
 
 	var sprite = this;
 	this.image.onload = function() {
@@ -683,21 +683,29 @@ function VroomSprite(imagePath, animated, timePerAnimationFrame, frameWidth, fra
 VroomSprite.prototype.reset = function() {
 	this.frameIndex = 0;
 	this.elapsedTime = 0;
-	this.looping = false;
+	this.lastFrameEnding = false;
 };
 
 VroomSprite.prototype.update = function(step) {
 	if(this.animated) {
 		this.elapsedTime += step;
 
+		// Check if it is time to move on to the next frame
 		if(this.elapsedTime >= this.timePerAnimationFrame / 100) {
 			this.frameIndex++;
 			this.elapsedTime = 0;
 		}
 
+		// Check if last frame
 		if(this.frameIndex >= this.numberOfFrames) {
 			this.frameIndex = 0;
-			this.looping = true;
+			this.lastFrameEnding = false;
+		}
+
+		// Check if next update is likely to be the end of the current frame
+		if(this.frameIndex + 1 == this.numberOfFrames &&
+		this.elapsedTime + step >= this.timePerAnimationFrame / 100) {
+			this.lastFrameEnding = true;
 		}
 	}
 };
