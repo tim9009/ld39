@@ -305,6 +305,9 @@ function Card(text, type, effects, effectValue, unrestValue) {
 					} else if(this.location === HAND) {
 						for(var card in Vroom.entityList[hand].list) {
 							if(Vroom.entityList[hand].list[card].entityID === this._id) {
+								// Play dictator saluting animation
+								Vroom.entityList[dictator].salute();
+
 								switch(this.effects) {
 									case 'discardTable':
 										clearTable();
@@ -788,6 +791,7 @@ var dictator = Vroom.registerEntity({
 	currentAction: 'thinking',
 	thinkingAnimation: new VroomSprite('sprites/design/dictator_thinking.png', true, 20, 42, 70, 8, 0),
 	hittingAnimation: new VroomSprite('sprites/design/dictator_hitting_podium.png', true, 20, 42, 70, 5, 0),
+	salutingAnimation: new VroomSprite('sprites/design/dictator_saluting.png', true, 20, 42, 70, 6, 0),
 	activeAnimation: {},
 
 	init: function() {
@@ -806,9 +810,15 @@ var dictator = Vroom.registerEntity({
 		this.activeAnimation.reset();
 	},
 
+	salute: function() {
+		this.currentAction = 'saluting';
+		this.activeAnimation = this.salutingAnimation;
+		this.activeAnimation.reset();
+	},
+
 	update: function(step) {
-		if(this.currentAction == 'hitting') {
-			if(this.activeAnimation.frameIndex == this.activeAnimation.numberOfFrames - 1) {
+		if(this.currentAction !== 'thinking') {
+			if(this.activeAnimation.lastFrameEnding){
 				this.think();
 			}
 		}
